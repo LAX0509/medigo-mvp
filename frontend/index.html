@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>App Médica - Gestión de Citas</title>
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+    body { font-family: 'Inter', sans-serif; background: #f3f4f6; }
+    .app-container { min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+  </style>
+</head>
+
+
+<body class="bg-gray-100">
+  <div class="app-container w-full max-w-7xl mx-auto p-4 md:p-8">
+    <!-- Header -->
+    <header class="w-full bg-white shadow-lg rounded-lg p-4 mb-8 flex flex-col md:flex-row justify-between items-center sticky top-0 z-10">
+      <!-- antes: <h1 class="text-2xl font-bold text-indigo-600">App Médica</h1> -->
+      <a href="/" class="flex items-center gap-3">
+      <img src="/logo.png" alt="App Médica"
+         class="h-16 md:h-24 lg:h-28 w-auto object-contain" />
+       <span class="sr-only">App Médica</span>
+      </a>
+
+
+      <nav class="mt-4 md:mt-0 space-x-4">
+        <button onclick="showView('home-view')" class="text-gray-600 hover:text-sky-600 font-medium">Inicio</button>
+        <button id="nav-agendar" onclick="showView('appointment-scheduler')" class="text-gray-600 hover:text-sky-600 font-medium hidden">Agendar Cita</button>
+        <button id="nav-historial" onclick="showView('appointment-history')" class="text-gray-600 hover:text-sky-600 font-medium hidden">Historial</button>
+        <button id="nav-logout" onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white font-medium py-1 px-3 rounded-lg shadow-md transition hidden">Cerrar Sesión</button>
+      </nav>
+    </header>
+
+    <!-- Mensajes -->
+    <div id="message-box" class="fixed top-20 right-4 p-4 rounded-lg shadow-xl text-white font-semibold z-50 transition-transform duration-300 transform translate-x-full"></div>
+
+    <!-- Contenedor principal -->
+    <main class="w-full max-w-4xl bg-white p-6 md:p-10 rounded-lg shadow-2xl">
+
+      <!-- Autenticación -->
+      <div id="auth-view" class="view">
+        <h2 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">Acceder o Registrarse</h2>
+
+        <div class="flex justify-center mb-8">
+          <button id="toggle-login" class="px-6 py-2 rounded-l-lg font-bold transition bg-sky-600 text-white shadow-md">Iniciar Sesión</button>
+          <button id="toggle-register" class="px-6 py-2 rounded-r-lg font-bold transition bg-sky-200 text-gray-700 hover:bg-sky-300">Registrarse</button>
+        </div>
+
+        <!-- LOGIN -->
+        <form id="login-form" class="space-y-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Correo</label>
+            <input type="email" id="login-email" required class="mt-1 w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Contraseña</label>
+            <input type="password" id="login-password" required class="mt-1 w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500">
+          </div>
+          <button class="w-full py-3 rounded-lg text-lg font-medium text-white bg-sky-600 hover:bg-sky-700">Iniciar Sesión</button>
+        </form>
+
+        <!-- REGISTRO -->
+        <form id="register-form" class="space-y-6 hidden">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Nombre Completo</label>
+            <input type="text" id="register-full-name" required class="mt-1 w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Correo</label>
+            <input type="email" id="register-email" required class="mt-1 w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Contraseña</label>
+            <input type="password" id="register-password" required class="mt-1 w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Rol</label>
+            <select id="register-role" required class="mt-1 w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500">
+              <option value="patient">Paciente</option>
+              <option value="doctor">Doctor</option>
+            </select>
+          </div>
+          <div id="doctor-extra" class="hidden">
+            <label class="block text-sm font-medium text-gray-700">Especialidad (solo doctores)</label>
+            <input type="text" id="register-specialty" class="mt-1 w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500" placeholder="Medicina General, Pediatría, etc.">
+          </div>
+          <button class="w-full py-3 rounded-lg text-lg font-medium text-white bg-sky-600 hover:bg-sky-700">Registrar Cuenta</button>
+        </form>
+      </div>
+
+      <!-- Home -->
+      <div id="home-view" class="view hidden text-center">
+        <h2 class="text-3xl font-extrabold text-gray-900 mb-4">Bienvenido(a), <span id="user-full-name" class="text-sky-600"></span></h2>
+        <p class="text-xl text-gray-600 mb-8">Tu rol es: <span id="user-role" class="font-bold capitalize"></span></p>
+        <div class="space-y-4 max-w-sm mx-auto">
+          <button id="home-agendar" onclick="showView('appointment-scheduler')" class="w-full py-3 rounded-lg text-white bg-blue-500 hover:bg-blue-600 font-semibold hidden">Agendar Nueva Cita</button>
+          <button id="home-historial" onclick="showView('appointment-history')" class="w-full py-3 rounded-lg text-white bg-gray-500 hover:bg-gray-600 font-semibold">Ver Historial</button>
+        </div>
+      </div>
+
+      <!-- Agendar Cita -->
+      <div id="appointment-scheduler" class="view hidden">
+        <h2 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">Agendar Cita Médica</h2>
+        <form id="schedule-form" class="space-y-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Doctor/Especialidad</label>
+            <select id="doctor-select" required class="mt-1 w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500"></select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Fecha y Hora</label>
+            <input type="datetime-local" id="appointment-date" required class="mt-1 w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Motivo</label>
+            <textarea id="appointment-reason" rows="3" required class="mt-1 w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500"></textarea>
+          </div>
+          <button class="w-full py-3 rounded-lg text-lg font-medium text-white bg-sky-600 hover:bg-sky-700">Confirmar Cita</button>
+        </form>
+      </div>
+
+      <!-- Historial -->
+      <div id="appointment-history" class="view hidden">
+        <h2 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">Historial de Citas Médicas</h2>
+        <div id="history-container" class="space-y-4">
+          <p id="history-loading" class="text-center text-gray-500">Cargando historial...</p>
+          <p id="history-empty" class="text-center text-gray-500 hidden">No hay citas registradas.</p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Modal Completar Cita -->
+<div id="complete-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+  <div class="bg-white w-[95%] max-w-2xl rounded-xl shadow-xl p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-semibold">Completar cita</h3>
+      <button onclick="closeCompleteModal()" class="text-gray-500 hover:text-black">&times;</button>
+    </div>
+
+    <form id="complete-form" class="space-y-5">
+      <!-- Nota médica -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Nota médica</label>
+        <textarea id="cmp-note" rows="3"
+          class="mt-1 w-full border rounded-lg px-3 py-2 focus:ring-sky-500 focus:border-sky-500"
+          placeholder="Impresión diagnóstica, plan, recomendaciones..."></textarea>
+      </div>
+
+      <!-- Recetas -->
+      <div>
+        <div class="flex items-center justify-between">
+          <label class="block text-sm font-medium text-gray-700">Formulación</label>
+          <button type="button" onclick="addPrescriptionRow()"
+            class="text-xs bg-gray-200 px-2 py-1 rounded hover:bg-gray-300">+ Añadir medicamento</button>
+        </div>
+        <div id="presc-list" class="mt-2 space-y-2"></div>
+      </div>
+
+      <!-- Órdenes -->
+      <div>
+        <div class="flex items-center justify-between">
+          <label class="block text-sm font-medium text-gray-700">Trámites / Órdenes</label>
+          <button type="button" onclick="addOrderRow()"
+            class="text-xs bg-gray-200 px-2 py-1 rounded hover:bg-gray-300">+ Añadir orden</button>
+        </div>
+        <div id="order-list" class="mt-2 space-y-2"></div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" onclick="closeCompleteModal()" class="px-4 py-2 rounded-md border">Cancelar</button>
+        <button type="submit" class="px-4 py-2 rounded-md bg-sky-600 text-white hover:bg-sky-700">
+          Guardar y completar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+  <script>
+    // === Configuración ===
+    const API_BASE_URL = '/api/v1';  // mismo origen (servido por FastAPI)
+    let userSession = null;          // { token, full_name, role, ... }
+
+    // === Utilidades UI ===
+    function showMessage(message, type='success') {
+      const box = document.getElementById('message-box');
+      box.textContent = message;
+      box.classList.remove('bg-green-500','bg-red-500','translate-x-full');
+      box.classList.add(type==='success' ? 'bg-green-500' : 'bg-red-500');
+      setTimeout(()=>box.classList.remove('translate-x-full'), 50);
+      setTimeout(()=>box.classList.add('translate-x-full'), 4000);
+    }
+
+    function showView(id) {
+      document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+
+      if (id === 'appointment-history') {
+        if (userSession) loadAppointmentHistory();
+        else { showMessage("Debes iniciar sesión para ver el historial", "error"); showView('auth-view'); }
+      }
+    }
+
+    function updateNavBar(isLoggedIn) {
+      const isPatient = !!(userSession && userSession.role === 'patient');
+      document.getElementById('nav-logout').classList.toggle('hidden', !isLoggedIn);
+      document.getElementById('nav-agendar').classList.toggle('hidden', !isLoggedIn || !isPatient);
+      document.getElementById('nav-historial').classList.toggle('hidden', !isLoggedIn);
+      document.getElementById('home-agendar').classList.toggle('hidden', !isLoggedIn || !isPatient);
+
+      if (isLoggedIn) {
+        document.getElementById('user-full-name').textContent = userSession.full_name;
+        document.getElementById('user-role').textContent = (userSession.role === 'patient' ? 'Paciente' : 'Doctor');
+      }
+    }
+
+    // Encabezados con token
+    const authHeaders = () => {
+      const s = userSession || JSON.parse(localStorage.getItem('userSession') || 'null');
+      const token = s?.token;
+      return token ? { 'Authorization': `Bearer ${token}` } : {};
+    };
+
+    // === Toggle Login / Registro ===
+    document.getElementById('toggle-login').addEventListener('click', () => {
+      document.getElementById('login-form').classList.remove('hidden');
+      document.getElementById('register-form').classList.add('hidden');
+      document.getElementById('toggle-login').classList.add('bg-sky-600','text-white');
+      document.getElementById('toggle-register').classList.remove('bg-sky-600','text-white');
+      document.getElementById('toggle-register').classList.add('bg-gray-200','text-gray-700');
+    });
+
+    document.getElementById('toggle-register').addEventListener('click', () => {
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('register-form').classList.remove('hidden');
+      document.getElementById('toggle-register').classList.add('bg-sky-600','text-white');
+      document.getElementById('toggle-login').classList.remove('bg-sky-600','text-white');
+      document.getElementById('toggle-login').classList.add('bg-gray-200','text-gray-700');
+    });
+
+    // Mostrar campo "Especialidad" solo si rol = doctor
+    document.getElementById('register-role').addEventListener('change', (e)=>{
+      document.getElementById('doctor-extra').classList.toggle('hidden', e.target.value!=='doctor');
+    });
+
+    // === LOGIN ===
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) return showMessage(data.detail || "Credenciales inválidas", "error");
+
+        userSession = data;
+        localStorage.setItem('userSession', JSON.stringify(data));
+        showMessage(`¡Bienvenido, ${data.full_name}!`);
+        updateNavBar(true);
+        showView('home-view');
+        if (data.role === 'patient') loadDoctors();
+      } catch {
+        showMessage("No se pudo conectar con el backend", "error");
+      }
+    });
+
+    // === REGISTRO ===
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const full_name = document.getElementById('register-full-name').value;
+  const email = document.getElementById('register-email').value;
+  const password = document.getElementById('register-password').value;
+  const role = document.getElementById('register-role').value;
+  const specialty = document.getElementById('register-specialty')?.value || null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ full_name, email, password, role, specialty })
+    });
+
+    let data;
+    try {
+      // intenta parsear JSON
+      data = await res.json();
+    } catch {
+      // si no es JSON, lee texto para ver si devolvió HTML (index.html)
+      const text = await res.text();
+      console.error('Respuesta no JSON de /register:', text.slice(0, 200));
+      showMessage("Respuesta no válida del servidor (no JSON)", "error");
+      return;
+    }
+
+    if (!res.ok) {
+      console.error('Error HTTP en /register:', res.status, data);
+      showMessage(data?.detail || "No se pudo registrar", "error");
+      return;
+    }
+
+    // Autologin:
+    const loginRes = await fetch(`${API_BASE_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const loginData = await loginRes.json();
+    if (!loginRes.ok) {
+      showMessage(loginData?.detail || "Registró, pero falló el login", "error");
+      return;
+    }
+
+    userSession = loginData;
+    localStorage.setItem('userSession', JSON.stringify(loginData));
+    updateNavBar(true);
+    showView('home-view');
+    showMessage("Cuenta creada e inicio de sesión exitoso");
+    if (role === 'patient') loadDoctors();
+  } catch (err) {
+    console.error('Fallo de red en /register:', err);
+    showMessage("No se pudo conectar con el backend", "error");
+  }
+});
+
+
+    // === LOGOUT ===
+    function logout() {
+      userSession = null;
+      localStorage.removeItem('userSession');
+      updateNavBar(false);
+      showView('auth-view');
+      showMessage("Sesión cerrada");
+    }
+
+    // === DOCTORES ===
+    async function loadDoctors() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/doctors`);
+        const data = await res.json();
+        const select = document.getElementById('doctor-select');
+        select.innerHTML = '<option value="">-- Selecciona un Doctor --</option>';
+
+        if (res.ok && data.doctors?.length) {
+          data.doctors.forEach(doc => {
+            const opt = document.createElement('option');
+            opt.value = doc.user_id;
+            opt.textContent = `${doc.full_name} (${doc.specialty || 'General'})`;
+            select.appendChild(opt);
+          });
+        } else {
+          select.innerHTML = '<option value="">No hay doctores registrados.</option>';
+        }
+      } catch {
+        showMessage("Error al cargar doctores", "error");
+      }
+    }
+
+    // === AGENDAR CITA ===
+    document.getElementById('schedule-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const doctor_id = document.getElementById('doctor-select').value;
+      const appointment_date = document.getElementById('appointment-date').value;
+      const reason = document.getElementById('appointment-reason').value;
+
+      if (!doctor_id) return showMessage("Selecciona un doctor", "error");
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/appointments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ doctor_id: parseInt(doctor_id), appointment_date, reason })
+        });
+        const data = await res.json();
+        if (!res.ok) return showMessage(data.detail || "No se pudo agendar", "error");
+
+        showMessage("¡Cita agendada con éxito!");
+        e.target.reset();
+        showView('home-view');
+      } catch {
+        showMessage("No se pudo conectar con el backend", "error");
+      }
+    });
+
+    // === HISTORIAL ===
+    async function loadAppointmentHistory() {
+      const cont = document.getElementById('history-container');
+      const loading = document.getElementById('history-loading');
+      const empty = document.getElementById('history-empty');
+      cont.innerHTML = ''; loading.classList.remove('hidden'); empty.classList.add('hidden');
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/appointments/history`, { headers: { ...authHeaders() } });
+        const data = await res.json();
+        loading.classList.add('hidden');
+
+        if (res.ok && data.history?.length) {
+          data.history.forEach(item => {
+            const isCompleted = item.status === 'completed';
+const isCancelled = item.status === 'cancelled';
+const statusColor = isCompleted
+  ? 'bg-green-100 text-green-800'
+  : isCancelled
+    ? 'bg-red-100 text-red-800'
+    : 'bg-blue-100 text-blue-800'; // scheduled
+
+const isPatient = (userSession?.role === 'patient');
+const nameKey = isPatient ? 'doctor_name' : 'patient_name';
+const labelKey = isPatient ? 'Doctor' : 'Paciente';
+const extra = isPatient
+  ? `<p class="text-sm text-gray-500">Especialidad: ${item.specialty || 'General'}</p>`
+  : `<p class="text-sm text-gray-500">Email: ${item.patient_email}</p>`;
+
+cont.innerHTML += `
+  <div class="bg-gray-50 p-4 rounded-xl shadow-sm border hover:shadow-md">
+    <div class="flex justify-between items-start mb-2">
+      <h3 class="text-lg font-semibold text-gray-800">${item.appointment_date}</h3>
+      <span class="px-3 py-1 text-xs font-medium rounded-full ${statusColor} capitalize">
+        ${item.status === 'scheduled' ? 'Agendada' : item.status === 'completed' ? 'Completada' : 'Cancelada'}
+      </span>
+    </div>
+
+    <p class="mb-1"><strong>${labelKey}:</strong> ${item[nameKey] || 'N/A'}</p>
+    ${extra}
+    <p class="mt-2 text-sm text-gray-700"><strong>Motivo:</strong> ${item.reason}</p>
+
+    <div class="mt-3 flex items-center gap-4">
+      <button class="text-sm text-sky-600 hover:underline"
+              onclick="toggleDetails(${item.id})">Ver detalles</button>
+
+      ${
+        (userSession?.role === 'doctor' && item.status === 'scheduled')
+        ? `<button class="text-sm bg-sky-600 text-white px-3 py-1 rounded-md hover:bg-sky-700"
+                   onclick="openCompleteModal(${item.id})">
+             Completar cita
+           </button>`
+        : ''
+      }
+
+      ${
+        (userSession?.role === 'patient' && item.status === 'scheduled')
+        ? `<button class="text-sm bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700"
+                   onclick="cancelAppointment(${item.id})">
+             Cancelar
+           </button>`
+        : ''
+      }
+    </div>
+
+    <div id="details-${item.id}" class="hidden mt-3 border-t pt-3 text-sm">
+      <p class="text-gray-500">Cargando detalle...</p>
+    </div>
+  </div>`;
+
+
+
+          });
+        } else {
+          empty.classList.remove('hidden');
+        }
+      } catch {
+        loading.classList.add('hidden');
+        empty.classList.remove('hidden');
+        showMessage("Error al cargar el historial", "error");
+      }
+    }
+
+    // === Inicialización ===
+    document.addEventListener('DOMContentLoaded', () => {
+      const stored = localStorage.getItem('userSession');
+      if (stored) {
+        userSession = JSON.parse(stored);
+        updateNavBar(true);
+        showView('home-view');
+        if (userSession.role === 'patient') loadDoctors();
+      } else {
+        updateNavBar(false);
+        showView('auth-view');
+      }
+    });
+
+    // === Detalle de Cita: ver recetas y órdenes ===
+       async function toggleDetails(appointmentId) {
+       const box = document.getElementById(`details-${appointmentId}`);
+       const isHidden = box.classList.contains('hidden');
+
+    // Si ya está visible, al volver a hacer clic lo oculta
+      if (!isHidden) { box.classList.add('hidden'); return; }
+
+    // Si está oculto, lo muestra y carga el detalle
+       box.classList.remove('hidden');
+       box.innerHTML = `<p class="text-gray-500">Cargando detalle...</p>`;
+
+       try {
+       const res = await fetch(`${API_BASE_URL}/appointments/${appointmentId}/summary`, {
+       headers: { ...authHeaders() }
+       });
+       const data = await res.json();
+
+      if (!res.ok) {
+      box.innerHTML = `<p class="text-red-600">${data.detail || 'Error al cargar'}</p>`;
+      return;
+      }
+
+    // === Nota médica ===
+    const noteHtml = data.note
+      ? `<div class="mb-3"><h4 class="font-semibold">Nota médica</h4>
+         <p class="text-gray-700 whitespace-pre-line">${data.note.note}</p></div>`
+      : '';
+
+    // === Recetas ===
+    const presc = data.prescriptions || [];
+    const prescHtml = presc.length
+      ? `<ul class="list-disc ml-5">
+           ${presc.map(p => `<li>
+             <span class="font-medium">${p.medication_name}</span>
+             ${[p.dose,p.route,p.frequency,p.duration].filter(Boolean).join(' · ')}
+             ${p.quantity ? ` · Cant.: ${p.quantity}` : ''}
+             ${p.instructions ? `<div class="text-gray-600">${p.instructions}</div>` : ''}
+           </li>`).join('')}
+         </ul>`
+      : `<p class="text-gray-500">Sin recetas registradas.</p>`;
+
+    // === Órdenes / Trámites ===
+    const ords = data.orders || [];
+    const ordsHtml = ords.length
+      ? `<ul class="list-disc ml-5">
+           ${ords.map(o => `<li>
+             <span class="font-medium">${o.name}</span>
+             (${o.type}${o.priority && o.priority!=='normal' ? ` · ${o.priority}` : ''})
+             ${o.scheduled_date ? ` · Prog.: ${o.scheduled_date.replace('T',' ')}` : ''}
+             ${o.notes ? `<div class="text-gray-600">${o.notes}</div>` : ''}
+           </li>`).join('')}
+         </ul>`
+      : `<p class="text-gray-500">Sin órdenes registradas.</p>`;
+
+    // === Render final dentro del panel ===
+    box.innerHTML = `
+      ${noteHtml}
+      <div class="mb-3">
+        <h4 class="font-semibold">Formulación</h4>
+        ${prescHtml}
+      </div>
+      <div>
+        <h4 class="font-semibold">Trámites / Órdenes</h4>
+        ${ordsHtml}
+      </div>`;
+  } catch {
+    box.innerHTML = `<p class="text-red-600">Error de red al cargar detalle.</p>`;
+  }
+}
+// ====== Completar Cita (Doctor) ======
+let CURRENT_APPOINTMENT_ID = null;
+
+function openCompleteModal(appointmentId) {
+  CURRENT_APPOINTMENT_ID = appointmentId;
+  // limpiar formulario
+  document.getElementById('cmp-note').value = '';
+  document.getElementById('presc-list').innerHTML = '';
+  document.getElementById('order-list').innerHTML = '';
+  // una fila por defecto
+  addPrescriptionRow();
+  addOrderRow();
+  document.getElementById('complete-modal').classList.remove('hidden');
+  document.getElementById('complete-modal').classList.add('flex');
+}
+
+function closeCompleteModal() {
+  document.getElementById('complete-modal').classList.add('hidden');
+  document.getElementById('complete-modal').classList.remove('flex');
+  CURRENT_APPOINTMENT_ID = null;
+}
+
+// Plantillas de filas
+function addPrescriptionRow() {
+  const id = Math.random().toString(36).slice(2);
+  const div = document.createElement('div');
+  div.className = 'grid md:grid-cols-6 gap-2 p-3 border rounded-lg';
+  div.innerHTML = `
+    <input class="md:col-span-2 border rounded px-2 py-1" placeholder="Medicamento *" data-k="medication_name" required>
+    <input class="md:col-span-2 border rounded px-2 py-1" placeholder="Dosis (500 mg)" data-k="dose">
+    <input class="md:col-span-2 border rounded px-2 py-1" placeholder="Vía (VO/IM/IV)" data-k="route">
+    <input class="md:col-span-2 border rounded px-2 py-1" placeholder="Frecuencia (c/8h)" data-k="frequency">
+    <input class="md:col-span-2 border rounded px-2 py-1" placeholder="Duración (7 días)" data-k="duration">
+    <input class="md:col-span-2 border rounded px-2 py-1" placeholder="Cantidad (# tabs)" data-k="quantity">
+    <input class="md:col-span-2 md:col-span-5 border rounded px-2 py-1" placeholder="Instrucciones" data-k="instructions">
+    <button type="button" class="text-xs text-red-600 hover:underline" onclick="this.parentElement.remove()">Quitar</button>
+  `;
+  document.getElementById('presc-list').appendChild(div);
+}
+
+function addOrderRow() {
+  const div = document.createElement('div');
+  div.className = 'grid md:grid-cols-6 gap-2 p-3 border rounded-lg';
+  div.innerHTML = `
+    <!-- ensanchamos el select a 2 columnas para que "Laboratorio" se vea completo -->
+    <select class="md:col-span-2 border rounded px -2 py-1" data-k="type">
+      <option value="lab">Laboratorio</option>
+      <option value="imaging">Imágenes</option>
+      <option value="procedure">Procedimiento</option>
+      <option value="referral">Remisión</option>
+    </select>
+
+    <!-- nombre del estudio/trámite -->
+    <input class="md:col-span-3 border rounded px -2 py-1"
+           placeholder="Nombre del estudio/ tramite*"
+           data-k="name" required>
+
+    <!-- prioridad -->
+    <select class="border rounded px-2 py-1" data-k="priority">
+      <option value="normal">Normal</option>
+      <option value="prioritary">Prioritaria</option>
+      <option value="urgent">Urgente</option>
+    </select>
+
+    <!-- fecha programada (opcional) -->
+    <input class="border rounded px-2 py-1" type="datetime-local" data-k="scheduled_date">
+
+    <!-- notas -->
+    <input class="md:col-span-2 border rounded px-2 py-1" placeholder="Notas" data-k="notes">
+
+    <button type="button" class="text-xs text-red-600 hover:underline" onclick="this.parentElement.remove()">Quitar</button>
+  `;
+  document.getElementById('order-list').appendChild(div);
+}
+
+
+// Tomar valores de un "row"
+function collectRowValues(container) {
+  const obj = {};
+  container.querySelectorAll('[data-k]').forEach(inp => {
+    const k = inp.getAttribute('data-k');
+    const v = inp.value?.trim();
+    if (v) obj[k] = v;
+  });
+  return obj;
+}
+
+// Envío del formulario
+document.getElementById('complete-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!CURRENT_APPOINTMENT_ID) { showMessage("No hay cita seleccionada", "error"); return; }
+
+  // nota
+  const notes = document.getElementById('cmp-note').value.trim();
+
+  // recetas
+  const prescriptions = [];
+  document.querySelectorAll('#presc-list > div').forEach(div => {
+    const p = collectRowValues(div);
+    if (!p.medication_name) return; // ignora si no hay nombre
+    prescriptions.push(p);
+  });
+
+  // órdenes
+  const orders = [];
+  document.querySelectorAll('#order-list > div').forEach(div => {
+    const o = collectRowValues(div);
+    if (!o.name) return;
+    // backend acepta "YYYY-MM-DDTHH:MM" o vacío
+    orders.push(o);
+  });
+
+  const payload = { notes, prescriptions, orders };
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/appointments/${CURRENT_APPOINTMENT_ID}/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) { showMessage(data.detail || "No se pudo completar", "error"); return; }
+
+    closeCompleteModal();
+    showMessage("Cita completada y registrada");
+    // recargar historial para ver estado "Completada"
+    loadAppointmentHistory();
+  } catch {
+    showMessage("Error de red al completar cita", "error");
+  }
+});
+
+async function cancelAppointment(appointmentId) {
+  if (!confirm("¿Seguro que deseas cancelar esta cita?")) return;
+
+  // (Opcional) pedir motivo:
+  // const reason = prompt("Motivo de cancelación (opcional):") || null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/appointments/${appointmentId}/cancel`, {
+      method: 'PUT',                               // 👈 tu endpoint es PUT
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ /*reason*/ })         // si activas motivo: { reason }
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showMessage(data.detail || "No se pudo cancelar la cita", "error");
+      return;
+    }
+
+    showMessage("Cita cancelada correctamente");
+    loadAppointmentHistory(); // refresca listado
+  } catch {
+    showMessage("Error de red al cancelar la cita", "error");
+  }
+}
+
+  </script>
+</body>
+</html>
