@@ -77,7 +77,7 @@ REST API
 Configuración del Proyecto
 1. Clonar el repositorio
 
-git clone https://github.com/TU_USUARIO/medigo-mvp.git
+git clone https://github.com/LAX0509/medigo-mvp.git
 
 cd medigo-mvp
 
